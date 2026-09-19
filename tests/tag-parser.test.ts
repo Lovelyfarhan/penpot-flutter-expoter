@@ -66,4 +66,19 @@ describe('TagParser', () => {
     expect(TagParser.cleanName('Header @flutter:Row')).toBe('Header');
     expect(TagParser.cleanName('@flutter:custom/MediaNavbar MainNav')).toBe('MainNav');
   });
+
+  it('normalizes lowercase tags case-insensitively', () => {
+    const containerTag = TagParser.parse('@flutter:container');
+    expect(containerTag).not.toBeNull();
+    expect(containerTag?.widgetName).toBe('Container');
+
+    const textTag = TagParser.parse('@flutter:text');
+    expect(textTag?.widgetName).toBe('Text');
+
+    const columnTag = TagParser.parse('@flutter:column');
+    expect(columnTag?.widgetName).toBe('Column');
+
+    const dropdownTag = TagParser.parse('@flutter:dropDownMenu');
+    expect(dropdownTag?.widgetName).toBe('DropdownMenu');
+  });
 });

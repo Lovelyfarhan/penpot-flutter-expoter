@@ -96,11 +96,14 @@ export type PenpotShapeType =
   | 'frame'
   | 'group'
   | 'rect'
+  | 'rectangle'
   | 'circle'
+  | 'ellipse'
   | 'path'
   | 'text'
   | 'image'
   | 'svg'
+  | 'svg-raw'
   | 'component'
   | 'boolean';
 

@@ -47,6 +47,9 @@ export class TagParser {
 
     if (!rawWidget) return null;
 
+    // Normalize widget name (e.g. container -> Container, dropDownMenu -> DropdownMenu)
+    const normalizedWidget = this.normalizeWidgetName(rawWidget);
+
     // Determine namespace and category
     let namespace: TagNamespace = 'flutter';
     if (explicitNamespace) {
@@ -66,11 +69,11 @@ export class TagParser {
     } else {
       // Direct @flutter:WidgetName
       // Check if widget name itself implies a specific category
-      if (this.isNavigationWidget(rawWidget)) {
+      if (this.isNavigationWidget(normalizedWidget)) {
         namespace = 'navigation';
-      } else if (this.isTabWidget(rawWidget)) {
+      } else if (this.isTabWidget(normalizedWidget)) {
         namespace = 'tab';
-      } else if (this.isMediaWidget(rawWidget)) {
+      } else if (this.isMediaWidget(normalizedWidget)) {
         namespace = 'media';
       } else {
         namespace = 'flutter';
@@ -82,11 +85,74 @@ export class TagParser {
     return {
       raw,
       namespace,
-      widgetName: rawWidget,
+      widgetName: normalizedWidget,
       category: namespace,
       args,
       isCustom: namespace === 'custom' || namespace === 'media'
     };
+  }
+
+  private static readonly CANONICAL_WIDGET_MAP: Record<string, string> = {
+    container: 'Container',
+    text: 'Text',
+    column: 'Column',
+    row: 'Row',
+    stack: 'Stack',
+    grid: 'Grid',
+    gridview: 'GridView',
+    list: 'ListView',
+    listview: 'ListView',
+    button: 'ElevatedButton',
+    elevatedbutton: 'ElevatedButton',
+    filledbutton: 'FilledButton',
+    textbutton: 'TextButton',
+    outlinedbutton: 'OutlinedButton',
+    iconbutton: 'IconButton',
+    image: 'Image',
+    icon: 'Icon',
+    card: 'Card',
+    chip: 'Chip',
+    badge: 'Badge',
+    listtile: 'ListTile',
+    dropdownmenu: 'DropdownMenu',
+    dropdown: 'DropdownMenu',
+    navbar: 'NavigationBar',
+    navigationbar: 'NavigationBar',
+    navigationrail: 'NavigationRail',
+    navigationdrawer: 'NavigationDrawer',
+    drawer: 'Drawer',
+    bottomnavigationbar: 'BottomNavigationBar',
+    appbar: 'AppBar',
+    sliverappbar: 'SliverAppBar',
+    tabbar: 'TabBar',
+    tabbarview: 'TabBarView',
+    tabview: 'TabBarView',
+    tab: 'Tab',
+    defaulttabcontroller: 'DefaultTabController',
+    scaffold: 'Scaffold',
+    safearea: 'SafeArea',
+    padding: 'Padding',
+    sizedbox: 'SizedBox',
+    center: 'Center',
+    align: 'Align',
+    expanded: 'Expanded',
+    flexible: 'Flexible',
+    spacer: 'Spacer',
+    wrap: 'Wrap',
+    positioned: 'Positioned',
+    customscrollview: 'CustomScrollView',
+    pageview: 'PageView',
+    hero: 'Hero',
+    cliprrect: 'ClipRRect',
+    opacity: 'Opacity'
+  };
+
+  public static normalizeWidgetName(raw: string): string {
+    const lower = raw.toLowerCase().trim();
+    if (this.CANONICAL_WIDGET_MAP[lower]) {
+      return this.CANONICAL_WIDGET_MAP[lower];
+    }
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
   }
 
   /**

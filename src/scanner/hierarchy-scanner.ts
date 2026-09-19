@@ -4,7 +4,7 @@
  * coordinates, bounding boxes, z-indices, styling, and layout data.
  */
 
-import { ScannedShape, Rect2D, ColorFill, StrokeStyle, ShadowEffect, TypographyStyle } from './types';
+import { ScannedShape, Rect2D, ColorFill, StrokeStyle, ShadowEffect, TypographyStyle, PenpotShapeType } from './types';
 
 export class HierarchyScanner {
   /**
@@ -64,10 +64,24 @@ export class HierarchyScanner {
       });
     }
 
+    // Normalize shape type
+    const rawType = String(raw.type || 'rect').toLowerCase();
+    let type: PenpotShapeType = 'rect';
+    if (rawType === 'board') type = 'board';
+    else if (rawType === 'group') type = 'group';
+    else if (rawType === 'text') type = 'text';
+    else if (rawType === 'image') type = 'image';
+    else if (rawType === 'boolean') type = 'boolean';
+    else if (rawType === 'svg' || rawType === 'svg-raw') type = 'svg';
+    else if (rawType === 'circle' || rawType === 'ellipse') type = 'circle';
+    else if (rawType === 'rect' || rawType === 'rectangle') type = 'rect';
+    else if (rawType === 'frame') type = 'frame';
+    else if (rawType === 'path') type = 'path';
+
     return {
       id: raw.id || `shape_${Math.random().toString(36).substring(2, 9)}`,
       name: raw.name || 'Unnamed',
-      type: raw.type || 'rect',
+      type,
       bounds,
       parentBounds,
       relativeBounds,

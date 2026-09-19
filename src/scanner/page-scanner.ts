@@ -17,10 +17,23 @@ export class PageScanner {
     const boards: ScannedShape[] = [];
     const shapes: ScannedShape[] = [];
 
-    // Collect boards and root shapes
-    const children = Array.isArray(page?.children) ? page.children : [];
+    let rawChildren: any[] = [];
 
-    children.forEach((child: any, idx: number) => {
+    // In Penpot Plugin API, top-level shapes/boards live under page.root.children
+    if (page?.root && Array.isArray(page.root.children)) {
+      rawChildren = page.root.children;
+    } else if (Array.isArray(page?.children)) {
+      rawChildren = page.children;
+    } else if (typeof page?.findShapes === 'function') {
+      const allShapes = page.findShapes() || [];
+      // Top-level shapes have no parent or parent is page.root
+      rawChildren = allShapes.filter((s: any) => !s.parentId || (page.root && s.parentId === page.root.id));
+      if (rawChildren.length === 0 && allShapes.length > 0) {
+        rawChildren = allShapes;
+      }
+    }
+
+    rawChildren.forEach((child: any, idx: number) => {
       const scanned = HierarchyScanner.scanShape(child, undefined, idx);
       if (scanned.type === 'board') {
         boards.push(scanned);
@@ -28,6 +41,19 @@ export class PageScanner {
         shapes.push(scanned);
       }
     });
+
+    // Fallback: If no top-level shapes were collected, try findShapes directly
+    if (boards.length === 0 && shapes.length === 0 && typeof page?.findShapes === 'function') {
+      const all = page.findShapes() || [];
+      all.forEach((s: any, idx: number) => {
+        const scanned = HierarchyScanner.scanShape(s, undefined, idx);
+        if (scanned.type === 'board') {
+          boards.push(scanned);
+        } else {
+          shapes.push(scanned);
+        }
+      });
+    }
 
     return {
       id: pageId,

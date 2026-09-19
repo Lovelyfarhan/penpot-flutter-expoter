@@ -27,23 +27,75 @@ if (typeof (globalThis as any).penpot !== 'undefined') {
     });
   });
 
+  // Listen for Penpot theme changes
+  penpot.on('themechange', (theme: string) => {
+    penpot.ui.sendMessage({
+      type: 'theme-changed',
+      theme: theme
+    });
+  });
+
   // Listen for messages from UI
   penpot.ui.onMessage(async (msg: any) => {
     if (!msg || !msg.type) return;
 
     try {
       switch (msg.type) {
+        case 'get-theme': {
+          penpot.ui.sendMessage({
+            type: 'theme-changed',
+            theme: penpot.theme || 'dark'
+          });
+          break;
+        }
+
+        case 'select-shape': {
+          if (msg.shapeId && penpot.currentPage) {
+            const shape = penpot.currentPage.getShapeById(msg.shapeId);
+            if (shape) {
+              penpot.selection = [shape];
+            }
+          }
+          break;
+        }
+
         case 'scan-current-page': {
           const page = PenpotScanner.scanCurrentPage(penpot);
-          // Pick active board or create synthetic root container if multiple boards
-          const rootShape = page.boards.length > 0 ? page.boards[0] : (page.shapes.length > 0 ? page.shapes[0] : null);
+          const allItems = [...page.boards, ...page.shapes];
 
-          if (!rootShape) {
+          if (allItems.length === 0) {
             penpot.ui.sendMessage({
               type: 'scan-error',
               error: 'Current page contains no boards or shapes to scan.'
             });
             return;
+          }
+
+          // If exactly one board or loose shape, compile it directly as the root
+          let rootShape;
+          if (allItems.length === 1) {
+            rootShape = allItems[0];
+          } else if (page.boards.length === 1 && page.shapes.length === 0) {
+            rootShape = page.boards[0];
+          } else {
+            // Multiple boards or loose shapes on canvas: wrap in synthetic root page board
+            const maxX = Math.max(...allItems.map(s => (s.bounds?.x || 0) + (s.bounds?.width || 0)), 800);
+            const maxY = Math.max(...allItems.map(s => (s.bounds?.y || 0) + (s.bounds?.height || 0)), 600);
+            rootShape = {
+              id: page.id,
+              name: page.name,
+              type: 'board' as const,
+              bounds: { x: 0, y: 0, width: maxX, height: maxY },
+              relativeBounds: { x: 0, y: 0, width: maxX, height: maxY },
+              zIndex: 0,
+              shadows: [],
+              children: allItems,
+              fills: [],
+              strokes: [],
+              opacity: 1,
+              visible: true,
+              rotation: 0
+            };
           }
 
           const result = DesignCompiler.compile(rootShape, page.name);
@@ -59,12 +111,34 @@ if (typeof (globalThis as any).penpot !== 'undefined') {
           if (shapes.length === 0) {
             penpot.ui.sendMessage({
               type: 'scan-error',
-              error: 'No shapes currently selected. Select a board or group in Penpot first.'
+              error: 'No shapes currently selected. Select a board, container, or group in Penpot first.'
             });
             return;
           }
 
-          const rootShape = shapes[0];
+          let rootShape;
+          if (shapes.length === 1) {
+            rootShape = shapes[0];
+          } else {
+            const maxX = Math.max(...shapes.map(s => (s.bounds?.x || 0) + (s.bounds?.width || 0)), 400);
+            const maxY = Math.max(...shapes.map(s => (s.bounds?.y || 0) + (s.bounds?.height || 0)), 400);
+            rootShape = {
+              id: 'selection_group',
+              name: 'Selection',
+              type: 'group' as const,
+              bounds: { x: 0, y: 0, width: maxX, height: maxY },
+              relativeBounds: { x: 0, y: 0, width: maxX, height: maxY },
+              zIndex: 0,
+              shadows: [],
+              children: shapes,
+              fills: [],
+              strokes: [],
+              opacity: 1,
+              visible: true,
+              rotation: 0
+            };
+          }
+
           const result = DesignCompiler.compile(rootShape, rootShape.name);
           penpot.ui.sendMessage({
             type: 'scan-success',

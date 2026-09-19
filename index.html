@@ -6,7 +6,7 @@
   <title>Penpot Flutter Design Compiler</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./src/ui/styles.css">
 </head>
 <body class="theme-dark">
@@ -28,20 +28,37 @@
           </svg>
         </div>
         <div>
-          <h1 class="title">Flutter Design Compiler</h1>
+          <div class="title-row">
+            <h1 class="title">Flutter Design Compiler</h1>
+            <span class="version-badge">v1.0</span>
+          </div>
           <span class="subtitle">Deterministic Penpot ➔ Flutter AST Pipeline</span>
         </div>
       </div>
 
       <div class="header-actions">
-        <button id="btnScanPage" class="btn btn-primary">
-          <span class="btn-icon">⚡</span> Scan Page
+        <div id="scanStatusBadge" class="status-pill status-ready" title="Plugin Engine Status">
+          <span class="status-dot"></span>
+          <span id="scanStatusText">Ready</span>
+        </div>
+        <button id="btnScanPage" class="btn btn-primary" title="Scan entire canvas and all boards">
+          <span class="btn-icon">⚡</span> <span class="btn-text">Scan Page</span>
         </button>
-        <button id="btnScanSelection" class="btn btn-secondary">
-          <span class="btn-icon">🎯</span> Scan Selection
+        <button id="btnScanSelection" class="btn btn-secondary" title="Scan only currently selected items">
+          <span class="btn-icon">🎯</span> <span class="btn-text">Scan Selection</span>
+        </button>
+        <button id="btnThemeToggle" class="btn btn-icon-only" title="Toggle Theme (Dark / Light)" aria-label="Toggle Theme">
+          🌓
         </button>
       </div>
     </header>
+
+    <!-- Notification / Diagnostic Banner -->
+    <div id="notificationBanner" class="notification-banner hidden">
+      <span id="notificationIcon" class="notification-icon">ℹ️</span>
+      <span id="notificationMessage" class="notification-text"></span>
+      <button id="btnCloseNotification" class="notification-close" aria-label="Dismiss">&times;</button>
+    </div>
 
     <!-- Metrics Ribbon -->
     <section class="metrics-ribbon" id="metricsRibbon">
@@ -83,15 +100,45 @@
 
     <!-- Main Content Area -->
     <main class="tab-content-container">
-      <!-- Tab 1: Widget Tree -->
+      <!-- Tab 1: Widget Tree + Node Inspector Split Layout -->
       <div class="tab-pane active" id="tabTree">
         <div class="pane-header">
-          <h2>Hierarchical Flutter Widget AST</h2>
-          <span class="tag-badge">Deterministic</span>
+          <div class="pane-title-group">
+            <h2>Hierarchical Flutter Widget AST</h2>
+            <span class="tag-badge">Deterministic</span>
+          </div>
+          <div class="pane-actions">
+            <button id="btnExpandAll" class="btn btn-xs btn-secondary" title="Expand all nodes">Expand All</button>
+            <button id="btnCollapseAll" class="btn btn-xs btn-secondary" title="Collapse all nodes">Collapse All</button>
+            <button id="btnCopyAst" class="btn btn-xs btn-secondary" title="Copy full AST JSON to clipboard">📋 Copy AST</button>
+          </div>
         </div>
-        <div class="tree-viewer" id="treeContainer">
-          <div class="empty-state">
-            Click <strong>Scan Page</strong> or <strong>Scan Selection</strong> to analyze the Penpot design.
+
+        <div class="tree-layout">
+          <!-- Tree Viewer Panel -->
+          <div class="tree-panel">
+            <div class="tree-viewer" id="treeContainer">
+              <div class="empty-state">
+                <div class="empty-state-icon">⚡</div>
+                <div class="empty-state-title">No AST Generated Yet</div>
+                <p>Click <strong>Scan Page</strong> or <strong>Scan Selection</strong> to analyze the Penpot design.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Node Inspector Panel -->
+          <div class="inspector-panel" id="inspectorPanel">
+            <div class="inspector-header">
+              <span class="inspector-title">Node Inspector</span>
+              <button id="btnSelectInPenpot" class="btn btn-xs btn-primary" disabled title="Highlight shape on Penpot canvas">
+                🎯 Select in Canvas
+              </button>
+            </div>
+            <div id="inspectorDetails" class="inspector-body">
+              <div class="empty-state-small">
+                <span>Select any node in the tree to inspect Flutter properties and highlight in canvas.</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -102,7 +149,11 @@
           <h2>Navigation Architecture & TabSystems</h2>
         </div>
         <div id="navContainer" class="split-cards">
-          <div class="empty-state">No navigation data scanned yet.</div>
+          <div class="empty-state">
+            <div class="empty-state-icon">📱</div>
+            <div class="empty-state-title">No Navigation Data</div>
+            <p>Scan a page or selection containing navigation bars, tabs, or routes.</p>
+          </div>
         </div>
       </div>
 
@@ -112,7 +163,11 @@
           <h2>Design Integrity & Structural Validation</h2>
         </div>
         <div id="validationContainer" class="diagnostics-list">
-          <div class="empty-state">No diagnostics report available yet.</div>
+          <div class="empty-state">
+            <div class="empty-state-icon">🛡️</div>
+            <div class="empty-state-title">No Diagnostics Available</div>
+            <p>Scan a design to evaluate naming, layout, and Flutter structural rules.</p>
+          </div>
         </div>
       </div>
 
@@ -148,7 +203,7 @@
         </div>
         <div class="tokens-split">
           <div class="tokens-column">
-            <h3>Colors</h3>
+            <h3>Color Palette</h3>
             <div id="tokenColors" class="color-swatches"></div>
             <h3 class="mt-4">Spacing & Radius</h3>
             <div id="tokenSpacing" class="pill-list"></div>
@@ -163,14 +218,16 @@
       <!-- Tab 6: Export -->
       <div class="tab-pane" id="tabExport">
         <div class="pane-header">
-          <h2>Export Design Specifications</h2>
+          <div>
+            <h2>Export Design Specifications</h2>
+            <p class="section-desc">
+              Deterministic specifications ready for consumption by <strong>Antigravity AI</strong>.
+            </p>
+          </div>
           <button id="btnDownloadZip" class="btn btn-primary" disabled>
             <span class="btn-icon">📦</span> Download Complete Bundle (.ZIP)
           </button>
         </div>
-        <p class="section-desc">
-          Ready for direct consumption by <strong>Antigravity AI</strong>. Contains all 9 deterministic specification files.
-        </p>
 
         <div class="export-file-grid" id="exportGrid">
           <!-- File cards dynamically created -->
@@ -191,28 +248,28 @@
       <div class="modal-card">
         <div class="modal-header">
           <h3>Register Custom Flutter Widget</h3>
-          <button class="btn-close" id="btnCloseModal">&times;</button>
+          <button class="btn-close" id="btnCloseModal" aria-label="Close modal">&times;</button>
         </div>
         <form id="formCustomWidget" class="modal-form">
           <div class="form-group">
-            <label>Widget Name (@flutter:custom/&lt;Name&gt;)</label>
+            <label for="custName">Widget Name (@flutter:custom/&lt;Name&gt;)</label>
             <input type="text" id="custName" placeholder="e.g. MediaNavbar" required>
           </div>
           <div class="form-group">
-            <label>Dart Class Name</label>
+            <label for="custClass">Dart Class Name</label>
             <input type="text" id="custClass" placeholder="e.g. MediaNavbar" required>
           </div>
           <div class="form-group">
-            <label>Package Name</label>
+            <label for="custPackage">Package Name</label>
             <input type="text" id="custPackage" placeholder="e.g. aniverz" required>
           </div>
           <div class="form-group">
-            <label>Import Path</label>
+            <label for="custImport">Import Path</label>
             <input type="text" id="custImport" placeholder="e.g. package:aniverz/widgets/media_navbar.dart" required>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Category</label>
+              <label for="custCategory">Category</label>
               <select id="custCategory">
                 <option value="navigation">navigation</option>
                 <option value="tab">tab</option>
@@ -222,7 +279,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Supports Children</label>
+              <label for="custChildren">Supports Children</label>
               <select id="custChildren">
                 <option value="true">Yes</option>
                 <option value="false">No</option>

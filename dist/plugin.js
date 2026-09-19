@@ -49,10 +49,33 @@
                     children.push(this.scanShape(child, bounds, idx));
                 });
             }
+            // Normalize shape type
+            const rawType = String(raw.type || 'rect').toLowerCase();
+            let type = 'rect';
+            if (rawType === 'board')
+                type = 'board';
+            else if (rawType === 'group')
+                type = 'group';
+            else if (rawType === 'text')
+                type = 'text';
+            else if (rawType === 'image')
+                type = 'image';
+            else if (rawType === 'boolean')
+                type = 'boolean';
+            else if (rawType === 'svg' || rawType === 'svg-raw')
+                type = 'svg';
+            else if (rawType === 'circle' || rawType === 'ellipse')
+                type = 'circle';
+            else if (rawType === 'rect' || rawType === 'rectangle')
+                type = 'rect';
+            else if (rawType === 'frame')
+                type = 'frame';
+            else if (rawType === 'path')
+                type = 'path';
             return {
                 id: raw.id || `shape_${Math.random().toString(36).substring(2, 9)}`,
                 name: raw.name || 'Unnamed',
-                type: raw.type || 'rect',
+                type,
                 bounds,
                 parentBounds,
                 relativeBounds,
@@ -266,9 +289,23 @@
             const pageName = page?.name || 'Page 1';
             const boards = [];
             const shapes = [];
-            // Collect boards and root shapes
-            const children = Array.isArray(page?.children) ? page.children : [];
-            children.forEach((child, idx) => {
+            let rawChildren = [];
+            // In Penpot Plugin API, top-level shapes/boards live under page.root.children
+            if (page?.root && Array.isArray(page.root.children)) {
+                rawChildren = page.root.children;
+            }
+            else if (Array.isArray(page?.children)) {
+                rawChildren = page.children;
+            }
+            else if (typeof page?.findShapes === 'function') {
+                const allShapes = page.findShapes() || [];
+                // Top-level shapes have no parent or parent is page.root
+                rawChildren = allShapes.filter((s) => !s.parentId || (page.root && s.parentId === page.root.id));
+                if (rawChildren.length === 0 && allShapes.length > 0) {
+                    rawChildren = allShapes;
+                }
+            }
+            rawChildren.forEach((child, idx) => {
                 const scanned = HierarchyScanner.scanShape(child, undefined, idx);
                 if (scanned.type === 'board') {
                     boards.push(scanned);
@@ -277,6 +314,19 @@
                     shapes.push(scanned);
                 }
             });
+            // Fallback: If no top-level shapes were collected, try findShapes directly
+            if (boards.length === 0 && shapes.length === 0 && typeof page?.findShapes === 'function') {
+                const all = page.findShapes() || [];
+                all.forEach((s, idx) => {
+                    const scanned = HierarchyScanner.scanShape(s, undefined, idx);
+                    if (scanned.type === 'board') {
+                        boards.push(scanned);
+                    }
+                    else {
+                        shapes.push(scanned);
+                    }
+                });
+            }
             return {
                 id: pageId,
                 name: pageName,
@@ -378,6 +428,8 @@
             const rawArgs = match[3];
             if (!rawWidget)
                 return null;
+            // Normalize widget name (e.g. container -> Container, dropDownMenu -> DropdownMenu)
+            const normalizedWidget = this.normalizeWidgetName(rawWidget);
             // Determine namespace and category
             let namespace = 'flutter';
             if (explicitNamespace) {
@@ -398,13 +450,13 @@
             else {
                 // Direct @flutter:WidgetName
                 // Check if widget name itself implies a specific category
-                if (this.isNavigationWidget(rawWidget)) {
+                if (this.isNavigationWidget(normalizedWidget)) {
                     namespace = 'navigation';
                 }
-                else if (this.isTabWidget(rawWidget)) {
+                else if (this.isTabWidget(normalizedWidget)) {
                     namespace = 'tab';
                 }
-                else if (this.isMediaWidget(rawWidget)) {
+                else if (this.isMediaWidget(normalizedWidget)) {
                     namespace = 'media';
                 }
                 else {
@@ -415,11 +467,18 @@
             return {
                 raw,
                 namespace,
-                widgetName: rawWidget,
+                widgetName: normalizedWidget,
                 category: namespace,
                 args,
                 isCustom: namespace === 'custom' || namespace === 'media'
             };
+        }
+        static normalizeWidgetName(raw) {
+            const lower = raw.toLowerCase().trim();
+            if (this.CANONICAL_WIDGET_MAP[lower]) {
+                return this.CANONICAL_WIDGET_MAP[lower];
+            }
+            return raw.charAt(0).toUpperCase() + raw.slice(1);
         }
         /**
          * Checks if an input string contains any @flutter tag.
@@ -515,6 +574,60 @@
     // followed optionally by trailing text (e.g. @flutter:Row MainHeader)
     TagParser.TAG_REGEX = /@flutter(?::(?:([a-zA-Z0-9_\-]+)\/)?([a-zA-Z0-9_]+)(?:\(([^)]*)\))?)/i;
     TagParser.TAG_CLEAN_REGEX = /@flutter(?::(?:[a-zA-Z0-9_\-]+\/)?([a-zA-Z0-9_]+)(?:\([^)]*\))?)/gi;
+    TagParser.CANONICAL_WIDGET_MAP = {
+        container: 'Container',
+        text: 'Text',
+        column: 'Column',
+        row: 'Row',
+        stack: 'Stack',
+        grid: 'Grid',
+        gridview: 'GridView',
+        list: 'ListView',
+        listview: 'ListView',
+        button: 'ElevatedButton',
+        elevatedbutton: 'ElevatedButton',
+        filledbutton: 'FilledButton',
+        textbutton: 'TextButton',
+        outlinedbutton: 'OutlinedButton',
+        iconbutton: 'IconButton',
+        image: 'Image',
+        icon: 'Icon',
+        card: 'Card',
+        chip: 'Chip',
+        badge: 'Badge',
+        listtile: 'ListTile',
+        dropdownmenu: 'DropdownMenu',
+        dropdown: 'DropdownMenu',
+        navbar: 'NavigationBar',
+        navigationbar: 'NavigationBar',
+        navigationrail: 'NavigationRail',
+        navigationdrawer: 'NavigationDrawer',
+        drawer: 'Drawer',
+        bottomnavigationbar: 'BottomNavigationBar',
+        appbar: 'AppBar',
+        sliverappbar: 'SliverAppBar',
+        tabbar: 'TabBar',
+        tabbarview: 'TabBarView',
+        tabview: 'TabBarView',
+        tab: 'Tab',
+        defaulttabcontroller: 'DefaultTabController',
+        scaffold: 'Scaffold',
+        safearea: 'SafeArea',
+        padding: 'Padding',
+        sizedbox: 'SizedBox',
+        center: 'Center',
+        align: 'Align',
+        expanded: 'Expanded',
+        flexible: 'Flexible',
+        spacer: 'Spacer',
+        wrap: 'Wrap',
+        positioned: 'Positioned',
+        customscrollview: 'CustomScrollView',
+        pageview: 'PageView',
+        hero: 'Hero',
+        cliprrect: 'ClipRRect',
+        opacity: 'Opacity'
+    };
 
     /**
      * Metadata Parser for Penpot Flutter Design Compiler.
@@ -3239,22 +3352,72 @@
                 count: penpot.selection ? penpot.selection.length : 0
             });
         });
+        // Listen for Penpot theme changes
+        penpot.on('themechange', (theme) => {
+            penpot.ui.sendMessage({
+                type: 'theme-changed',
+                theme: theme
+            });
+        });
         // Listen for messages from UI
         penpot.ui.onMessage(async (msg) => {
             if (!msg || !msg.type)
                 return;
             try {
                 switch (msg.type) {
+                    case 'get-theme': {
+                        penpot.ui.sendMessage({
+                            type: 'theme-changed',
+                            theme: penpot.theme || 'dark'
+                        });
+                        break;
+                    }
+                    case 'select-shape': {
+                        if (msg.shapeId && penpot.currentPage) {
+                            const shape = penpot.currentPage.getShapeById(msg.shapeId);
+                            if (shape) {
+                                penpot.selection = [shape];
+                            }
+                        }
+                        break;
+                    }
                     case 'scan-current-page': {
                         const page = PenpotScanner.scanCurrentPage(penpot);
-                        // Pick active board or create synthetic root container if multiple boards
-                        const rootShape = page.boards.length > 0 ? page.boards[0] : (page.shapes.length > 0 ? page.shapes[0] : null);
-                        if (!rootShape) {
+                        const allItems = [...page.boards, ...page.shapes];
+                        if (allItems.length === 0) {
                             penpot.ui.sendMessage({
                                 type: 'scan-error',
                                 error: 'Current page contains no boards or shapes to scan.'
                             });
                             return;
+                        }
+                        // If exactly one board or loose shape, compile it directly as the root
+                        let rootShape;
+                        if (allItems.length === 1) {
+                            rootShape = allItems[0];
+                        }
+                        else if (page.boards.length === 1 && page.shapes.length === 0) {
+                            rootShape = page.boards[0];
+                        }
+                        else {
+                            // Multiple boards or loose shapes on canvas: wrap in synthetic root page board
+                            const maxX = Math.max(...allItems.map(s => (s.bounds?.x || 0) + (s.bounds?.width || 0)), 800);
+                            const maxY = Math.max(...allItems.map(s => (s.bounds?.y || 0) + (s.bounds?.height || 0)), 600);
+                            rootShape = {
+                                id: page.id,
+                                name: page.name,
+                                type: 'board',
+                                bounds: { x: 0, y: 0, width: maxX, height: maxY },
+                                relativeBounds: { x: 0, y: 0, width: maxX, height: maxY },
+                                zIndex: 0,
+                                shadows: [],
+                                children: allItems,
+                                fills: [],
+                                strokes: [],
+                                opacity: 1,
+                                visible: true,
+                                rotation: 0
+                            };
                         }
                         const result = DesignCompiler.compile(rootShape, page.name);
                         penpot.ui.sendMessage({
@@ -3268,11 +3431,33 @@
                         if (shapes.length === 0) {
                             penpot.ui.sendMessage({
                                 type: 'scan-error',
-                                error: 'No shapes currently selected. Select a board or group in Penpot first.'
+                                error: 'No shapes currently selected. Select a board, container, or group in Penpot first.'
                             });
                             return;
                         }
-                        const rootShape = shapes[0];
+                        let rootShape;
+                        if (shapes.length === 1) {
+                            rootShape = shapes[0];
+                        }
+                        else {
+                            const maxX = Math.max(...shapes.map(s => (s.bounds?.x || 0) + (s.bounds?.width || 0)), 400);
+                            const maxY = Math.max(...shapes.map(s => (s.bounds?.y || 0) + (s.bounds?.height || 0)), 400);
+                            rootShape = {
+                                id: 'selection_group',
+                                name: 'Selection',
+                                type: 'group',
+                                bounds: { x: 0, y: 0, width: maxX, height: maxY },
+                                relativeBounds: { x: 0, y: 0, width: maxX, height: maxY },
+                                zIndex: 0,
+                                shadows: [],
+                                children: shapes,
+                                fills: [],
+                                strokes: [],
+                                opacity: 1,
+                                visible: true,
+                                rotation: 0
+                            };
+                        }
                         const result = DesignCompiler.compile(rootShape, rootShape.name);
                         penpot.ui.sendMessage({
                             type: 'scan-success',
