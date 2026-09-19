@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Penpot Flutter Design Compiler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/index-Dr_VOs2p.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/bundle-exporter-BUjmrO97.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-fK8iudvM.css">
+</head>
+<body class="theme-dark">
+  <div id="app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 2 7 12 12 22 7 12 2" stroke="url(#cyanGrad)"></polygon>
+            <polyline points="2 17 12 22 22 17" stroke="url(#cyanGrad)"></polyline>
+            <polyline points="2 12 12 17 22 12" stroke="url(#cyanGrad)"></polyline>
+            <defs>
+              <linearGradient id="cyanGrad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#06B6D4" />
+                <stop offset="1" stop-color="#3B82F6" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div>
+          <h1 class="title">Flutter Design Compiler</h1>
+          <span class="subtitle">Deterministic Penpot ➔ Flutter AST Pipeline</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnScanPage" class="btn btn-primary">
+          <span class="btn-icon">⚡</span> Scan Page
+        </button>
+        <button id="btnScanSelection" class="btn btn-secondary">
+          <span class="btn-icon">🎯</span> Scan Selection
+        </button>
+      </div>
+    </header>
+
+    <!-- Metrics Ribbon -->
+    <section class="metrics-ribbon" id="metricsRibbon">
+      <div class="metric-card">
+        <span class="metric-value" id="valNodes">0</span>
+        <span class="metric-label">AST Nodes</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-value" id="valNavs">0</span>
+        <span class="metric-label">Navigation</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-value" id="valTabs">0</span>
+        <span class="metric-label">Tab Systems</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-value" id="valComponents">0</span>
+        <span class="metric-label">Components</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-value" id="valTokens">0</span>
+        <span class="metric-label">Tokens</span>
+      </div>
+      <div class="metric-card" id="cardDiagnostics">
+        <span class="metric-value text-success" id="valDiagnostics">Valid</span>
+        <span class="metric-label">Diagnostics</span>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="tree">Widget Tree</button>
+      <button class="nav-tab" data-tab="navigation">Navigation & Tabs</button>
+      <button class="nav-tab" data-tab="validation">Validation</button>
+      <button class="nav-tab" data-tab="registry">Custom Registry</button>
+      <button class="nav-tab" data-tab="tokens">Tokens & Assets</button>
+      <button class="nav-tab" data-tab="export">Export Bundle</button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="tab-content-container">
+      <!-- Tab 1: Widget Tree -->
+      <div class="tab-pane active" id="tabTree">
+        <div class="pane-header">
+          <h2>Hierarchical Flutter Widget AST</h2>
+          <span class="tag-badge">Deterministic</span>
+        </div>
+        <div class="tree-viewer" id="treeContainer">
+          <div class="empty-state">
+            Click <strong>Scan Page</strong> or <strong>Scan Selection</strong> to analyze the Penpot design.
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Navigation & Tabs -->
+      <div class="tab-pane" id="tabNavigation">
+        <div class="pane-header">
+          <h2>Navigation Architecture & TabSystems</h2>
+        </div>
+        <div id="navContainer" class="split-cards">
+          <div class="empty-state">No navigation data scanned yet.</div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Validation -->
+      <div class="tab-pane" id="tabValidation">
+        <div class="pane-header">
+          <h2>Design Integrity & Structural Validation</h2>
+        </div>
+        <div id="validationContainer" class="diagnostics-list">
+          <div class="empty-state">No diagnostics report available yet.</div>
+        </div>
+      </div>
+
+      <!-- Tab 4: Custom Registry -->
+      <div class="tab-pane" id="tabRegistry">
+        <div class="pane-header">
+          <h2>Custom Flutter Widget Registry</h2>
+          <button id="btnOpenAddModal" class="btn btn-sm btn-primary">+ Register Widget</button>
+        </div>
+        <div class="registry-table-wrap">
+          <table class="data-table" id="registryTable">
+            <thead>
+              <tr>
+                <th>Widget Name</th>
+                <th>Class</th>
+                <th>Package</th>
+                <th>Import Path</th>
+                <th>Category</th>
+                <th>Children</th>
+              </tr>
+            </thead>
+            <tbody id="registryTableBody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 5: Tokens & Assets -->
+      <div class="tab-pane" id="tabTokens">
+        <div class="pane-header">
+          <h2>Design Tokens & Asset Manifest</h2>
+        </div>
+        <div class="tokens-split">
+          <div class="tokens-column">
+            <h3>Colors</h3>
+            <div id="tokenColors" class="color-swatches"></div>
+            <h3 class="mt-4">Spacing & Radius</h3>
+            <div id="tokenSpacing" class="pill-list"></div>
+          </div>
+          <div class="tokens-column">
+            <h3>Assets & Media</h3>
+            <div id="tokenAssets" class="asset-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 6: Export -->
+      <div class="tab-pane" id="tabExport">
+        <div class="pane-header">
+          <h2>Export Design Specifications</h2>
+          <button id="btnDownloadZip" class="btn btn-primary" disabled>
+            <span class="btn-icon">📦</span> Download Complete Bundle (.ZIP)
+          </button>
+        </div>
+        <p class="section-desc">
+          Ready for direct consumption by <strong>Antigravity AI</strong>. Contains all 9 deterministic specification files.
+        </p>
+
+        <div class="export-file-grid" id="exportGrid">
+          <!-- File cards dynamically created -->
+        </div>
+
+        <div class="preview-box">
+          <div class="preview-header">
+            <span id="previewFileName">design.md</span>
+            <button id="btnCopyPreview" class="btn btn-xs btn-secondary">Copy</button>
+          </div>
+          <pre><code id="previewCode">// Export content will preview here...</code></pre>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal for Adding Custom Widget -->
+    <div class="modal-backdrop hidden" id="modalCustomWidget">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Register Custom Flutter Widget</h3>
+          <button class="btn-close" id="btnCloseModal">&times;</button>
+        </div>
+        <form id="formCustomWidget" class="modal-form">
+          <div class="form-group">
+            <label>Widget Name (@flutter:custom/&lt;Name&gt;)</label>
+            <input type="text" id="custName" placeholder="e.g. MediaNavbar" required>
+          </div>
+          <div class="form-group">
+            <label>Dart Class Name</label>
+            <input type="text" id="custClass" placeholder="e.g. MediaNavbar" required>
+          </div>
+          <div class="form-group">
+            <label>Package Name</label>
+            <input type="text" id="custPackage" placeholder="e.g. aniverz" required>
+          </div>
+          <div class="form-group">
+            <label>Import Path</label>
+            <input type="text" id="custImport" placeholder="e.g. package:aniverz/widgets/media_navbar.dart" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Category</label>
+              <select id="custCategory">
+                <option value="navigation">navigation</option>
+                <option value="tab">tab</option>
+                <option value="media">media</option>
+                <option value="layout">layout</option>
+                <option value="custom">custom</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Supports Children</label>
+              <select id="custChildren">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Widget</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

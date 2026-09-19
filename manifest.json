@@ -1,0 +1,11 @@
+{
+  "name": "Penpot Flutter Design Compiler",
+  "description": "Compiles Penpot designs into structured, deterministic Flutter Design AST and specifications for AI coding agents.",
+  "code": "/plugin.js",
+  "icon": "/icon.svg",
+  "permissions": [
+    "content:read",
+    "content:write",
+    "library:read"
+  ]
+}
